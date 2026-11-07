@@ -1,0 +1,61 @@
+name: Publish win19 once (temporary)
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/publish-win19-once.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == '891467598/Charker' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_COMMIT: ee7b49021ebfbecfa38d850bcafc66428ae6d98a
+      BUILD_RUN: '42361848216'
+      RELEASE_TAG: windows-v0.5.1-win.19
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ee7b49021ebfbecfa38d850bcafc66428ae6d98a
+          persist-credentials: false
+      - name: Wait for the approved source build and verify its commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(gh run view "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)"
+          test "$actual" = "$SOURCE_COMMIT"
+          gh run watch "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --exit-status --interval 30
+      - name: Download and verify win19 artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --name ANKER-windows-x64 --dir release-assets
+          cd release-assets
+          sha256sum --check SHA256SUMS.txt
+          test -f ANKER-0.5.1-win.19-Setup-x64.exe
+          test -f ANKER-0.5.1.19-windows-x64.zip
+      - name: Publish only the owner-approved win19 release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft >release-state.txt 2>/dev/null; then
+            if grep -qx false release-state.txt; then
+              echo "win19 is already public; existing assets are preserved."
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$SOURCE_COMMIT" \
+              --title 'ANKER Windows 0.5.1-win.19' --notes-file windows-dotnet/RELEASE-NOTES.md
+          fi
+          gh release upload "$RELEASE_TAG" release-assets/*.exe release-assets/*.zip release-assets/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
