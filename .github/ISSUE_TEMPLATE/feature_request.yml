@@ -1,0 +1,16 @@
+name: Windows 版功能建议
+description: 提出适用于 windows-dotnet 的使用场景或改进建议
+title: "[建议] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 需要解决的使用问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望的行为和可接受的替代方案
+    validations:
+      required: true

@@ -59,3 +59,28 @@ DerivedData/
 .env
 .env.*
 !.env.example
+
+# Windows .NET build output and private runtime data
+windows-dotnet/bin/
+windows-dotnet/obj/
+windows-dotnet/dist/
+windows-dotnet/Bridge/node_modules/
+windows-dotnet/Installer/Prerequisites/
+artifacts/
+.test-data/
+**/credentials.bin
+**/settings.json
+**/settings-before-model-filter.json
+**/history/
+**/WebView/
+**/*test-results.json
+**/*test-results.txt
+**/ui-test-*.png
+**/widget-preview.png
+**/startup-error.txt
+*.pfx
+
+# Preserve only the upstream documentation snapshots maintained by this fork
+!/docs/
+/docs/*
+!/docs/UPSTREAM_README.*.md

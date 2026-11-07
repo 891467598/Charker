@@ -1,0 +1,43 @@
+name: Windows 版问题反馈
+description: 报告 windows-dotnet 版本的问题（请勿填写账号或设备标识）
+title: "[Windows] "
+body:
+  - type: markdown
+    attributes:
+      value: "请勿上传账号 ID、手机号、序列号、MAC、令牌、私钥或用户数据目录，截图请先遮挡个人信息。"
+  - type: input
+    id: app_version
+    attributes:
+      label: 软件版本
+      placeholder: 例如 0.5.1-win.19
+    validations:
+      required: true
+  - type: input
+    id: windows_version
+    attributes:
+      label: Windows 版本及系统架构
+      placeholder: 例如 Windows 11 24H2，x64
+    validations:
+      required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: 充电器型号
+      options:
+        - Prime 160W / A2687 / 蓝牙
+        - Prime 250W / A2345 / 云端
+        - 两种型号
+        - 界面或安装问题
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: 固件版本（可选，请勿填写序列号）
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤、预期与实际结果
+      description: 若与网络有关，说明代理/TUN 状态和切换顺序；不要粘贴未脱敏日志。
+    validations:
+      required: true

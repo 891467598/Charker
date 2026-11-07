@@ -1,0 +1,8 @@
+README.md text eol=lf
+README_EN.md text eol=lf
+CONTRIBUTING.md text eol=lf
+SECURITY.md text eol=lf
+docs/UPSTREAM_README.*.md text eol=lf
+.github/ISSUE_TEMPLATE/*.yml text eol=lf
+.github/PULL_REQUEST_TEMPLATE.md text eol=lf
+.github/workflows/windows-dotnet.yml text eol=lf

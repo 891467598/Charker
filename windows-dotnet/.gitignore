@@ -1,0 +1,9 @@
+bin/
+obj/
+dist/
+Bridge/node_modules/
+*.user
+startup-error.txt
+ui-test-results.json
+ui-test-preview.png
+self-test-results.txt

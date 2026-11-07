@@ -1,90 +1,50 @@
 <div align="center">
-  <img src="Resources/Screenshots/app-icon-rounded.png" width="128" alt="Charker 图标" />
-  <h1>Charker</h1>
-  <p><strong>在 Mac 和 Windows 上查看和控制 Anker Prime 160W 与 250W。</strong></p>
-  <p>简体中文 · <a href="README_EN.md">English</a></p>
-  <p>
-    <a href="https://github.com/qzz0518/Charker/stargazers"><img src="https://img.shields.io/github/stars/qzz0518/Charker?style=flat-square" alt="GitHub Stars" /></a>
-    <img src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square&logo=apple" alt="macOS 14+" />
-    <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square" alt="Windows 10 | 11" />
-    <img src="https://img.shields.io/badge/Swift-6.0-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6.0" />
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License" /></a>
-    <a href="https://x.com/zerah_eth"><img src="https://img.shields.io/badge/follow-%40zerah__eth-111111?style=flat-square&logo=x&logoColor=white" alt="在 X 关注 @zerah_eth" /></a>
-  </p>
+  <img src="windows-dotnet/UI/assets/AppIcon.png" width="112" alt="ANKER Windows icon" />
+  <h1>ANKER Windows · Charker .NET</h1>
+  <p>监测 Anker Prime 160W / A2687 与 250W / A2345 的社区 Windows 桌面应用</p>
+  <p><a href="https://github.com/891467598/Charker/releases/tag/windows-v0.5.1-win.19">下载 Windows 安装包</a> · <a href="windows-dotnet/README.md">完整使用与构建说明</a> · <a href="README_EN.md">English</a></p>
 </div>
 
-<p align="center">
-  <img src="Resources/Screenshots/overview.png" width="1100" alt="Charker 总览：实时功率、三维设备、端口状态与功率时间线" />
-</p>
+[![Windows .NET build](https://github.com/891467598/Charker/actions/workflows/windows-dotnet.yml/badge.svg)](https://github.com/891467598/Charker/actions/workflows/windows-dotnet.yml)
+[![MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011%20x64-0078D4.svg)](windows-dotnet/README.md)
 
-Charker 是 **Anker Prime 160W（A2687）** 和 **Anker Prime Charger 250W（A2345）** 的非官方 macOS 和 Windows 应用。160W 通过蓝牙直连，250W 用 Anker 账号经 Wi-Fi 云端连接。
+这是基于 [qzz0518/Charker](https://github.com/qzz0518/Charker) 的非官方定制 Windows 移植版，当前版本 **0.5.1-win.19**，采用 C#/.NET 8、WPF 与 WebView2。项目与 Anker 无关联，未获其背书。
 
-> [!IMPORTANT]
-> Charker 是独立项目，与 Anker 无关联、未获其背书。读数已在 160W（蓝牙固件 `v0.0.5.2`）和 250W（固件 `2.1.1.6`）上实机验证。控制功能中，160W 的屏幕设置和 250W 的端口开关已实机验证，其余尚未实机验证。
+## 下载
+
+从 [本仓库 Releases](https://github.com/891467598/Charker/releases/tag/windows-v0.5.1-win.19) 下载 Setup 或便携 ZIP。Setup 内置 .NET、Node.js 和 WebView2 离线运行库，支持 Windows 10 build 19041+ / Windows 11 x64。更新前请先从托盘退出旧版。
 
 ## 功能
 
-- **实时总览**：各端口的电压、电流和功率，3D 设备模型，功率曲线。
-- **菜单栏 / 任务栏**：不开主窗口也能看功率。Mac 菜单栏的显示内容可以自定义；Windows 托盘图标直接显示总功率，悬停看各端口。
-- **能耗与电费**：按天、周、月查看用电量和电费，可导出 CSV / JSON。
-- **设备控制**
-  - 160W：端口开关与倒计时，屏幕语言、亮度、自动锁屏和方向，固定分配，自定义充电模式。
-  - 250W：端口开关、倒计时与定时，充电模式与优先端口，自定义充电模式，屏幕、时钟屏保与主题，实验室开关。
-- **Apple 家庭**：把各端口接入「家庭」App，查看功率（需要 iOS 27）、开关端口。
-- **模拟充电器**：没有设备也能体验界面，模拟数据不会进入真实记录。
-- **中英双语**，应用内更新。
+- 同时监测一台 160W 蓝牙充电器和一台 250W 云端充电器，查看各接口功率、电压与电流。
+- 最近五分钟的各端口曲线、能耗与电费，以及随接入变化的 3D 模型。
+- 可长期放置的桌面组件，支持拖动、锁定、置顶与托盘后台运行。
+- Windows 登录后在后台自启动、读数刷新间隔、已保存设备重命名和移除。
+- 250W 意外掉线后在第 2/4/6/8/10 秒重连，每次最多两秒，成功即停止。
+- 设备控制、定时与实验性功能采用独立权限；Apple 家庭/Matter 功能保留，完整配对仍待实机验证。
 
-## 安装
+连接和详细限制见 [Windows 使用说明](windows-dotnet/README.md)。测试结果不代表所有固件和网络环境均已验证。
 
-**macOS**：需要 macOS 14 或更高版本。
+## 源码布局
 
-```bash
-brew install --cask qzz0518/tap/charker
+| 路径 | 内容 |
+| --- | --- |
+| `windows-dotnet/` | 本仓库维护的 Windows .NET 定制版 |
+| `.github/workflows/windows-dotnet.yml` | Windows 构建、测试与安装包工件 |
+| `Sources/`、`Matter/`、`charker-go/` | 保留的上游 macOS / Rust / Go 版源码 |
+| `docs/UPSTREAM_README.*.md` | 带原始归属的上游说明存档 |
+
+```powershell
+git clone https://github.com/891467598/Charker.git
+cd Charker/windows-dotnet
+./build.ps1
 ```
 
-或者从 [Releases](https://github.com/qzz0518/Charker/releases) 下载 DMG，拖进「应用程序」。
+需要 .NET SDK 8.0.426、Node.js 24.19.0 和 npm，详见 [构建说明](windows-dotnet/README.md#从源码构建)。请勿把上游 Go 版与本目录的程序、版本号及更新渠道混用。
 
-**Windows（测试版）**：需要 Windows 10 或 11，连 160W 还需要电脑支持低功耗蓝牙。从 [Releases](https://github.com/qzz0518/Charker/releases) 下载 `charker-setup-0.5.6-amd64.exe`，双击安装，不需要管理员权限。安装包还没有代码签名，SmartScreen 拦下时点「更多信息 › 仍要运行」。
+## 贡献与许可
 
-## 连接
+请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)、[SECURITY.md](SECURITY.md)，反馈时不要提交账号 ID、序列号、MAC、令牌或用户数据。
 
-**160W（蓝牙）**：先完全退出手机上的 Anker App（160W 同时只能连一台设备，被占用时可能搜不到），再在「设备与连接」里选择充电器；如有提示，填入 Anker 账号 ID。
-
-**250W（Wi-Fi）**：先在 Anker App 里绑定并配网，再在「设备与连接」里用同一个 Anker 账号登录。日本账号选 JP，中国大陆账号用手机验证码登录。
-
-两种型号控制端口前，都要先在「高级」里打开「允许端口开关」。
-
-**Apple 家庭**：在「Apple 家庭」页打开「接入 Apple 家庭」，用 iPhone「家庭」App 扫二维码添加，提示未认证配件时选「仍然添加」。整台充电器（显示总功率）和每个端口各有一个二维码；两个都添加的话，「电力」里的全屋功率会把这台充电器算两遍。电脑睡眠或 Charker 退出后，「家庭」里会显示「无响应」。Windows 上第一次打开时会请求一次管理员确认，让 Windows 防火墙放行。同一时间只有 Charker 当前选中的充电器会在「家庭」里更新。
-
-## 隐私
-
-- 160W 的数据走本机蓝牙；250W 的数据和控制经 Anker 云端加密传输。
-- 「接入 Apple 家庭」默认关闭。打开后，端口开关和功率经本地网络加密发给你的「家庭」。
-- 能耗历史和设置只存在这台电脑上。没有 Charker 服务器，也不收集使用数据。
-- 不保存密码和验证码。250W 的登录令牌存在钥匙串里（Windows 上用系统加密存在本机），退出登录即删除，官方 App 里的绑定不受影响。
-- 250W 的自定义充电模式、实验室开关和上传的时钟图片会写入 Anker 账号，和官方 App 一样。
-
-## 从源码构建
-
-需要 Xcode Command Line Tools、Swift 6.0+、rustup、mise 和 ripgrep：
-
-```bash
-git clone https://github.com/qzz0518/Charker.git
-cd Charker
-mise run verify        # 构建、测试并打包 dist/Charker.app
-open dist/Charker.app
-```
-
-测试真实蓝牙要用打包后的 `.app`，`mise run run` 只适合界面和模拟模式。
-
-Windows 版的代码在 [`charker-go/`](charker-go/README.md)（Go + WebView2），构建方法见那里的 README。
-
-## 参与贡献
-
-欢迎提 [Issue](https://github.com/qzz0518/Charker/issues) 和 PR。涉及设备行为的，请写明型号、固件版本和复现步骤，不要上传账号 ID、序列号、蓝牙地址或原始抓包。
-
-## 致谢与许可证
-
-协议参考了 [SolixBLE](https://github.com/flip-dots/SolixBLE)、[Anker_Prime_160W_WebBLE](https://github.com/Hyper-Beast/Anker_Prime_160W_WebBLE)、[Anker_Prime_BLE_hacking](https://github.com/atc1441/Anker_Prime_BLE_hacking) 和 [anker-solix-api](https://github.com/thomluther/anker-solix-api)，Charker 的实现为独立编写。
-
-代码以 [MIT License](LICENSE) 发布。Anker 商标、产品图片、3D 模型等第三方素材不在 MIT 许可范围内，详见 [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)。
+源代码保留上游作者署名，沿用 [MIT](LICENSE)。第三方图片、图标、3D 模型与商标不自动属于 MIT，许可范围见 [Windows 声明](windows-dotnet/WINDOWS-NOTICES.md) 和 [上游第三方声明](THIRD-PARTY-NOTICES.md)。感谢原作者 qzz0518 及其列出的协议研究项目。

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 上游 Charker 项目
+    url: https://github.com/qzz0518/Charker
+    about: 上游 macOS/Go 版本代码与说明
