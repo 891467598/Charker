@@ -1,0 +1,61 @@
+name: Publish approved win31 release
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/publish-win31-once.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == '891467598/Charker' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_COMMIT: 1cbfd4cdef0e3a1ac9c63c26ab6d338f2c83c881
+      BUILD_RUN: '44685466411'
+      RELEASE_TAG: windows-v0.5.1-win.31
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 1cbfd4cdef0e3a1ac9c63c26ab6d338f2c83c881
+          persist-credentials: false
+      - name: Verify and download build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(gh run view "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)"
+          test "$actual" = "$SOURCE_COMMIT"
+          gh run watch "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --exit-status --interval 15
+          gh run download "$BUILD_RUN" --repo "$GITHUB_REPOSITORY" --name ANKER-windows-x64 --dir release-assets
+          cd release-assets
+          sha256sum --check SHA256SUMS.txt
+          test -f ANKER-0.5.1-win.31-Setup-x64.exe
+          test -f ANKER-0.5.1.31-windows-x64.zip
+          unzip -Z1 ANKER-0.5.1.31-windows-x64.zip > portable-files.txt
+          if grep -Ei '(^|/)(ANKER\.pdb|credentials\.bin|cuktech-tokens\.bin|settings-before-model-filter\.json|ui-test-results\.json|self-test-results\.txt|tls-test-results\.json)$' portable-files.txt; then
+            echo "Unexpected private or diagnostic file in portable ZIP"
+            exit 1
+          fi
+      - name: Publish win31
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft >release-state.txt 2>/dev/null; then
+            if grep -qx false release-state.txt; then
+              echo "win31 is already published."
+              exit 0
+            fi
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$SOURCE_COMMIT" \
+              --title 'ANKER Windows 0.5.1-win.31' --notes-file windows-dotnet/RELEASE-NOTES.md
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            release-assets/ANKER-0.5.1-win.31-Setup-x64.exe \
+            release-assets/ANKER-0.5.1.31-windows-x64.zip release-assets/SHA256SUMS.txt
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
