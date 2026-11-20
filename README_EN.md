@@ -1,8 +1,8 @@
 # ANKER Windows · Charker .NET
 
-A community Windows companion for Anker Prime 160W (A2687, Bluetooth) and 250W (A2345, cloud). This fork maintains the **C#/.NET 8 + WPF + WebView2 implementation** in [`windows-dotnet/`](windows-dotnet/README.md), based on [qzz0518/Charker v0.5.1](https://github.com/qzz0518/Charker/tree/v0.5.1). It is not affiliated with or endorsed by Anker.
+A community Windows companion for Anker Prime 160W (A2687, Bluetooth), 250W (A2345, cloud), and CUKTECH 10 Ultra (AD1204U, Bluetooth). This fork maintains the **C#/.NET 8 + WPF + WebView2 implementation** in [`windows-dotnet/`](windows-dotnet/README.md), based on [qzz0518/Charker v0.5.1](https://github.com/qzz0518/Charker/tree/v0.5.1). It is not affiliated with or endorsed by Anker.
 
-[中文](README.md) · [Windows downloads](https://github.com/891467598/Charker/releases/tag/windows-v0.5.1-win.19) · [Build status](https://github.com/891467598/Charker/actions/workflows/windows-dotnet.yml)
+[中文](README.md) · [Windows downloads](https://github.com/891467598/Charker/releases/tag/windows-v0.5.1-win.31) · [Build status](https://github.com/891467598/Charker/actions/workflows/windows-dotnet.yml)
 
 ## Install
 
@@ -10,10 +10,10 @@ Download the offline Setup or the portable ZIP from this fork's Releases. Requir
 
 ## Features
 
-- One Bluetooth 160W and one cloud 250W charger monitored simultaneously.
+- Simultaneous monitoring of the Bluetooth 160W, cloud 250W, and Bluetooth CUKTECH 10 Ultra.
 - Per-port watts/volts/amps, colored five-minute charts, energy/cost tracking and animated 3D cable views.
 - Persistent desktop widget, tray operation, optional background startup at Windows sign-in, configurable value refresh intervals, and saved-device management.
-- After an established 250W session drops unexpectedly, reconnect at seconds 2/4/6/8/10, with up to two seconds for each attempt. Stop on success; the last attempt finishes by second 12. Manual disconnect/logout cancels the retry round. The 160W policy is unchanged.
+- The 250W cloud connection retries every two seconds within a 20-second window. The 160W scans for its saved address when a direct connection fails.
 - Device controls and experimental features are separately gated. Full Apple Home/Matter pairing and some device controls still require hardware validation.
 
 ## Build

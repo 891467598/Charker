@@ -1,23 +1,19 @@
-## ANKER Windows .NET · 0.5.1-win.19
+Windows 10 2004+ / Windows 11 x64。安装或启动便携版前，请从系统托盘退出旧版。Setup 含离线 WebView2 运行库。
 
-这是本仓库定制 .NET Windows 版的首次公开发布，基于 qzz0518/Charker v0.5.1，保留上游署名与 MIT 许可。与仓库保留的 macOS / Go 版是不同实现。
+## 0.5.1-win.31
 
-- 支持 Windows 10 build 19041+ / Windows 11 x64。
-- 同时监测一台 A2687 160W（蓝牙）和一台 A2345 250W（Anker 云端）。
-- 各端口曲线、最近五分钟缓存、能耗与电费、3D 模型、桌面组件和托盘后台运行。
-- 可选 Windows 登录后台自启动、1～10 秒读数刷新、保存设备重命名/移除。
-- 250W 意外断线后，在第 2/4/6/8/10 秒尝试重连，每次最多两秒；成功立即停止，最后一次最晚第 12 秒结束。手动断开、退出账号、换设备或退出会取消重连。160W 策略不变。
+- 桌面组件从最后一次有效输出起，满 2 分钟收成一行，满 5 分钟隐藏。恢复有效输出时立即展开。
+- Windows 解锁或唤醒后恢复桌面组件，并对先前连接且当前失联的蓝牙充电器进行有限重试。160W 直接打开失败时会补扫保存的地址。
+- 支持酷态科 10 Ultra（AD1204U）的蓝牙监测、端口读数与 3D 模型。支持从米家导入配对信息。
+- 250W 云端连接失败时以 2 秒为间隔尝试恢复，重试窗口到第 20 秒截止。支持保存、重命名和移除云端设备。
+- 华为 SCP 端口按实测电压与电流计算功率。
 
-### 下载
+## 0.5.1-win.31
 
-- **Setup.exe**：直接安装，包含 .NET、Node.js 和微软 WebView2 离线运行库，可复制到 U 盘供其他电脑安装。
-- **windows-x64.zip**：完整解压后运行 `ANKER/ANKER.exe`；便携版需要电脑已安装 WebView2。
-- **SHA256SUMS.txt**：安装器与 ZIP 的 SHA-256 校验和。
+- The desktop widget collapses a card after two minutes without confirmed output, hides it after five, and expands as soon as confirmed output resumes.
+- Windows unlock or wake restores the widget and retries previously connected Bluetooth chargers when needed. A failed direct connection to a saved 160W charger triggers a targeted scan.
+- Adds Bluetooth monitoring, per-port readings, and a 3D model for the CUKTECH 10 Ultra (AD1204U). Pairing information can be imported from Mi Home.
+- Cloud reconnect for the 250W uses a 20-second window with attempts every two seconds. Cloud devices can be saved, renamed, and removed.
+- Huawei SCP output is calculated from measured voltage and current.
 
-升级前从托盘退出旧版。用户数据目录仍是 `%LOCALAPPDATA%\Charker.Windows`；新电脑需要重新登录和保存设备。安装包未附加商业代码签名。
-
-### 验证与限制
-
-公开源码使用虚构的个人设备测试标识。CI 构建和本地隔离测试不需要真实账号，也不修改真实 Windows 自启动项。设备与固件覆盖有限，实际 Clash/TUN 切换和部分实验性控制仍需实机验证；Apple 家庭/Matter 完整配对未获全面确认。
-
-项目与 Anker 无关联，未获其背书。第三方图片、模型、商标及用户提供的图标不自动属于代码的 MIT 许可。请阅读 README 与许可证说明，反馈时不要公开账号、序列号/MAC、令牌或未脱敏日志。
+Requires Windows 10 build 19041 or newer or Windows 11 (x64). Exit the previous version from the system tray before updating. For the portable ZIP, extract the entire archive before running ANKER.exe.

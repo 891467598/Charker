@@ -13,3 +13,8 @@ fieldset#controlCards{border:0;padding:0;margin:0;min-width:0}button:disabled,in
 fieldset.control-card{margin:0;min-width:0}
 .hero{display:flex;flex-direction:column}.hero .power{margin-top:2px}.hero .power-foot{margin-top:8px}#modelStage{height:230px;margin-top:0;flex:none}.hero .stage-label{margin-top:auto}.model-ports{margin-bottom:10px}.chart-card #portCharts{margin-top:28px}.chart-card .metric-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;text-align:center;align-items:start;margin-top:auto;padding-top:18px}.chart-card .metric-row small{font-size:11px;line-height:1.5}.chart-card .metric-row strong{font-size:20px;line-height:1.35;margin-top:8px;font-variant-numeric:tabular-nums}
 .chart-card #portCharts #powerChart{height:240px}
+
+/* CUKTECH shares the existing cards, controls and typography. */
+.cuktech-connection{margin-top:22px}.xiaomi-qr{display:block;width:210px;height:210px;object-fit:contain;border-radius:14px;background:white;margin:16px 0}#xiaomiPanel{border-top:1px solid #edf1f5;margin-top:18px;padding-top:8px}.cuktech-connection details{margin:20px 0}.device>span:nth-child(2){min-width:0}.device>span:nth-child(2)>small{white-space:nowrap}
+aside{overflow-y:auto}aside>.device{flex-shrink:0}
+.nav{margin-top:22px}@media(max-height:760px){aside{padding-top:20px;padding-bottom:18px}.brand{margin-bottom:24px}.nav{margin-top:14px;gap:4px}.nav button{padding-top:9px;padding-bottom:9px}.sidebar-bottom{padding-top:16px}}

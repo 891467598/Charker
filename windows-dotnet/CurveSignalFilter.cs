@@ -7,7 +7,7 @@ internal static class CurveSignalFilter {
  public static ChartSample[] Apply(string model,IReadOnlyList<ChartSample> raw){
   var result=raw.Select(s=>new ChartSample(s.At,s.Values,(double[])s.Values.Clone())).ToArray();
   int ports=raw.Count==0?0:raw[0].Values.Length;
-  if(model=="A2687")for(int port=0;port<ports;port++){
+  if(model is "A2687" or "AD1204U")for(int port=0;port<ports;port++){
    int start=-1;bool confirmed=false;long previous=long.MinValue;
    for(int i=0;i<raw.Count;i++){
     var s=raw[i];double watts=s.Values[port];if(previous!=long.MinValue&&s.At-previous>MaxSampleGapMs){start=-1;confirmed=false;}previous=s.At;

@@ -14,7 +14,7 @@ public class DeviceState {
  public Dictionary<string,object?> Settings {get;set;}=[];
  public double Total=>Ports.Where(p=>p.On!=false).Sum(p=>p.Power);
  public bool Stale=>Updated is null || DateTimeOffset.UtcNow-Updated>TimeSpan.FromSeconds(12);
- public static DeviceState Empty(string model,string id="",bool demo=false)=> new(){Model=model,Id=id,Demo=demo,Name="Anker Prime "+(model=="A2687"?"160W":"250W"),Ports=Enumerable.Range(0,model=="A2687"?3:6).Select(i=>new PortReading{Index=i,Name=i<4?"C"+(i+1):"A"+(i-3)}).ToList()};
+ public static DeviceState Empty(string model,string id="",bool demo=false)=> new(){Model=model,Id=id,Demo=demo,Name=model==CuktechProtocol.Model?"酷态科 10 Ultra":"Anker Prime "+(model=="A2687"?"160W":"250W"),Ports=Enumerable.Range(0,model==CuktechProtocol.Model?4:model=="A2687"?3:6).Select(i=>new PortReading{Index=i,Name=model==CuktechProtocol.Model&&i==3?"A":i<4?"C"+(i+1):"A"+(i-3)}).ToList()};
 }
 public static class Telemetry {
  static ushort U16(byte[] b,int i)=>BitConverter.ToUInt16(b,i);
@@ -27,9 +27,12 @@ public static class Telemetry {
   if(cloud && opcode!=0x303 && opcode!=0xa00){UpdateCloud(state,opcode,r);return false;}
   if(!cloud && opcode!=0x200&&opcode!=0x300&&opcode!=0x20a&&opcode!=0x20b)return false;
   foreach(var p in state.Ports){int tag=cloud?(opcode==0x303?0xa2:0xa4)+p.Index:0xa5+p.Index;var raw=r.Get(tag);if(raw is not {Length:>=8}||raw[0]!=4)continue;
-   byte[] b=raw[1..];p.Status=b[0];p.Voltage=U16(b,1)/1000.0;p.Current=U16(b,3)/1000.0;p.Power=U16(b,5)/100.0;ports=true;if(cloud?b[0]!=1:b[0]==0)p.Power=0;
+   byte[] b=raw[1..];p.Status=b[0];p.Voltage=U16(b,1)/1000.0;p.Current=U16(b,3)/1000.0;ports=true;
    if(cloud){if(b.Length>8){p.Cable=b[0]==1&&p.Index<4?b[7] switch{3=>"Huawei",4=>"Xiaomi",_=>Cable(b[7])}:null;p.Protocol=b[0]==1?b[8] switch{1=>"Huawei SCP",2=>"Xiaomi HyperCharge",_=>""}:null;}}
    else if(r.Body(0xac+p.Index) is {Length:>=12} c){p.On=c[0]==1;p.Countdown=c[1]==1?BitConverter.ToUInt32(c,6):null;p.Cable=Cable(c[10]);p.CableAttached=c[10]<=2?true:c[10]==3?false:null;p.Protocol=Profile(c[11]);}
+   bool supplying=cloud?p.Status==1:p.Status!=0;
+   if(!supplying && p.Protocol=="Huawei SCP")p.Protocol=null;
+   p.Power=!supplying ? 0 : p.Protocol=="Huawei SCP" ? p.Voltage*p.Current : U16(b,5)/100.0;
   }
   if(cloud&&opcode==0xa00){
    for(int i=0;i<5;i++){var b=r.Body(0xaa+i);if(b is not {Length:>=19})continue;foreach(var p in state.Ports.Where(p=>Math.Min(p.Index,4)==i)){p.On=b[0]==1;p.ScheduleOn=b[1..5];p.ScheduleOff=b[5..9];p.Countdown=b[9]==1?BitConverter.ToUInt32(b,14):null;p.Priority=b[18];}}

@@ -8,15 +8,29 @@ public static class SelfTests {
   public bool Cancelled;
   protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct){try{await Task.Delay(Timeout.InfiniteTimeSpan,ct);return new(System.Net.HttpStatusCode.OK);}catch(OperationCanceledException){Cancelled=true;throw;}}
  }
- public static int Run(bool hardware=false){try{
+ sealed class OfflineHttp : HttpMessageHandler {
+  public int Calls;
+  protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct){Interlocked.Increment(ref Calls);return Task.FromException<HttpResponseMessage>(new IOException("isolated network unavailable"));}
+ }
+ sealed class FirstFailureThenStall : HttpMessageHandler {
+  public int Calls;public volatile bool Cancelled;
+  protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct){if(Interlocked.Increment(ref Calls)==1)throw new IOException("initial isolated failure");try{await Task.Delay(Timeout.InfiniteTimeSpan,ct);throw new Exception("unreachable");}catch(OperationCanceledException){Cancelled=true;throw;}}
+ }
+ public static int Run(bool hardware=false){try{CuktechTests.Register(Test);
   Test("A stalled cloud HTTP request observes the retry cancellation deadline",()=>{var handler=new WaitingHttp();using var api=new CloudApi(new HttpClient(handler),new("test","test","test",DateTimeOffset.UtcNow.AddDays(1),"CN",CloudApi.Cn));using var timeout=new CancellationTokenSource(100);var clock=System.Diagnostics.Stopwatch.StartNew();bool cancelled=false;try{api.Post("app/devicemanage/get_user_mqtt_info",new JsonObject(),ct:timeout.Token).GetAwaiter().GetResult();}catch(OperationCanceledException){cancelled=true;}Eq(cancelled&&handler.Cancelled,true);Eq(clock.Elapsed<TimeSpan.FromSeconds(2),true);});
-  Test("Initial startup failures never arm repeated cloud reconnects",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;Eq(p.Dropped(t),false);Eq(p.Take(t.AddSeconds(2)),null);Eq(p.Take(t.AddSeconds(20)),null);});
-  Test("Five cloud attempts start at seconds 2 4 6 8 10 with two-second deadlines",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");Eq(p.Dropped(t),true);for(int n=1;n<=5;n++){Eq(p.Take(t.AddMilliseconds(n*2000-1)),null);var a=p.Take(t.AddSeconds(n*2))!;Eq(a.Id,"250");Eq(a.Number,n);Eq(a.Deadline,t.AddSeconds(n*2+2));p.Finished(a);}Eq(p.Take(t.AddSeconds(12)),null);Eq(p.Dropped(t.AddSeconds(13)),false);Eq(p.Take(t.AddSeconds(100)),null);});
+  Test("An initial cloud failure arms exactly one recovery round",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;Eq(p.Dropped(t),false);Eq(p.Failed("250",t),true);Eq(p.Failed("250",t.AddSeconds(1)),false);Eq(p.Take(t.AddSeconds(2))!.Number,1);});
+  Test("Nine cloud attempts start at seconds 2 through 18 and stop by second 20",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");Eq(p.Dropped(t),true);for(int n=1;n<=9;n++){Eq(p.Take(t.AddMilliseconds(n*2000-1)),null);var a=p.Take(t.AddSeconds(n*2))!;Eq(a.Id,"250");Eq(a.Number,n);Eq(a.Deadline,t.AddSeconds(n*2+2));p.Finished(a);}Eq(p.Take(t.AddSeconds(20)),null);Eq(p.Dropped(t.AddSeconds(21)),false);Eq(p.Take(t.AddSeconds(100)),null);});
   Test("In-flight cloud attempts cannot overlap even at the next scheduled slot",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");p.Dropped(t);var first=p.Take(t.AddSeconds(2))!;Eq(p.Take(t.AddSeconds(4)),null);p.Finished(first);Eq(p.Take(t.AddSeconds(4))!.Number,2);});
   Test("Successful cloud reconnect cancels remaining slots and arms a later independent drop",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");p.Dropped(t);var old=p.Take(t.AddSeconds(2))!;p.Connected("250");Eq(p.IsCurrent(old),false);p.Finished(old);Eq(p.Take(t.AddSeconds(4)),null);Eq(p.Dropped(t.AddSeconds(8)),true);Eq(p.Take(t.AddSeconds(10))!.Number,1);});
   Test("Manual disconnect logout switch and shutdown invalidate all remaining retry slots",()=>{var t=DateTimeOffset.UtcNow;foreach(var reason in new[]{"disconnect","logout","switch","shutdown"}){var p=new CloudReconnect();p.Connected("old");p.Dropped(t);var old=p.Take(t.AddSeconds(2))!;p.Cancel();Eq(p.IsCurrent(old),false);p.Finished(old);Eq(p.Take(t.AddSeconds(4)),null);Eq(p.Dropped(t.AddSeconds(5)),false);p.Connected("new");p.Dropped(t.AddSeconds(6));var next=p.Take(t.AddSeconds(8))!;p.Finished(old);Eq(p.IsCurrent(next),true);Eq(p.Take(t.AddSeconds(10)),null);}});
   Test("Repeated transport errors do not restart the cloud retry budget",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");int queued=0;Parallel.For(0,100,_=>{if(p.Dropped(t))Interlocked.Increment(ref queued);});Eq(queued,1);var a=p.Take(t.AddSeconds(2))!;Eq(p.Dropped(t.AddSeconds(3)),false);p.Finished(a);Eq(p.Take(t.AddSeconds(4))!.Number,2);});
-  Test("Expired retry rounds never start after their final handshake deadline",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");p.Dropped(t);Eq(p.Take(t.AddSeconds(12)),null);Eq(p.Take(t.AddSeconds(20)),null);});
+  Test("Expired retry rounds never start after their final handshake deadline",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Connected("250");p.Dropped(t);Eq(p.Take(t.AddSeconds(20)),null);Eq(p.Take(t.AddSeconds(22)),null);});
+  Test("Delayed scheduler skips missed slots instead of bursting or extending the window",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Failed("250",t);var a=p.Take(t.AddMilliseconds(19000))!;Eq(a.Number,9);Eq(a.Deadline,t.AddSeconds(20));p.Finished(a);Eq(p.Take(t.AddSeconds(21)),null);});
+  Test("An idle pending recovery expires at exactly twenty seconds",()=>{var p=new CloudReconnect();var t=DateTimeOffset.UtcNow;p.Failed("250",t);Eq(p.Expire(t.AddMilliseconds(19999)),false);Eq(p.Expire(t.AddSeconds(20)),true);Eq(p.Take(t.AddSeconds(20)),null);Eq(p.Failed("250",t.AddSeconds(30)),true);});
+  Test("Startup cloud failure retries through the controller without restarting the startup policy",()=>{var handler=new OfflineHttp();var now=DateTimeOffset.UtcNow;using var c=new Controller(new CloudApi(new HttpClient(handler),new("test","test","test",now.AddDays(1),"CN",CloudApi.Cn)),()=>now);c.Prefs.Devices.Clear();c.Prefs.Devices.Add(new("cloud-test","A2345","test"));c.ConnectSavedAtStartup().GetAwaiter().GetResult();Eq(handler.Calls,1);c.ConnectSavedAtStartup().GetAwaiter().GetResult();Eq(handler.Calls,1);for(int i=1;i<=9;i++){now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,i+1);}now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,10);now=now.AddSeconds(100);c.PublishPending();Eq(handler.Calls,10);});
+  Test("A failed unsaved manual cloud target retries and explicit disconnect cancels it",()=>{var handler=new OfflineHttp();var now=DateTimeOffset.UtcNow;using var c=new Controller(new CloudApi(new HttpClient(handler),new("test","test","test",now.AddDays(1),"CN",CloudApi.Cn)),()=>now);c.Prefs.Devices.Clear();try{c.Handle("connectCloud",new JsonObject{["serial"]="unsaved-test"}).GetAwaiter().GetResult();}catch(IOException){}Eq(handler.Calls,1);now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,2);c.Handle("disconnect",new JsonObject()).GetAwaiter().GetResult();now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,2);});
+  Test("The final cloud slot cancels a stalled request at the twenty-second boundary",()=>{var handler=new FirstFailureThenStall();var now=DateTimeOffset.UtcNow;using var c=new Controller(new CloudApi(new HttpClient(handler),new("test","test","test",now.AddDays(1),"CN",CloudApi.Cn)),()=>now);c.Prefs.Devices.Clear();c.Prefs.Devices.Add(new("cloud-test","A2345","test"));c.ConnectSavedAtStartup().GetAwaiter().GetResult();now=now.AddSeconds(18);var watch=System.Diagnostics.Stopwatch.StartNew();c.PublishPending();Eq(handler.Calls,2);Eq(SpinWait.SpinUntil(()=>handler.Cancelled,TimeSpan.FromSeconds(3)),true);Eq(watch.Elapsed<TimeSpan.FromSeconds(3),true);now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,2);});
+  Test("Removing a pending saved cloud device cancels its recovery",()=>{var handler=new OfflineHttp();var now=DateTimeOffset.UtcNow;using var c=new Controller(new CloudApi(new HttpClient(handler),new("test","test","test",now.AddDays(1),"CN",CloudApi.Cn)),()=>now);c.Prefs.Devices.Clear();c.Prefs.Devices.Add(new("cloud-test","A2345","test"));c.ConnectSavedAtStartup().GetAwaiter().GetResult();c.Handle("forgetDevice",new JsonObject{["id"]="cloud-test",["model"]="A2345"}).GetAwaiter().GetResult();now=now.AddSeconds(2);c.PublishPending();Eq(handler.Calls,1);});
   Test("Windows sign-in entry quotes spaced and Unicode paths and requests background mode",()=>{var startup=new WindowsStartup(true);const string exe=@"C:\Program Files\充电监测\ANKER.exe";Eq(WindowsStartup.BuildCommand(exe),"\""+exe+"\" --background");startup.Set(true,exe);Eq(startup.Enabled,true);Eq(startup.Command,WindowsStartup.BuildCommand(exe));startup.Set(false);Eq(startup.Enabled,false);Eq(startup.Command,(string?)null);Throws(()=>WindowsStartup.BuildCommand("bad\"path"));Eq(WindowsStartup.IsOurCommand("\"C:\\Other.exe\" --background"),false);});
   Test("Accepted sub-0.2W readings retain their exact value when the prior anchor expires",()=>{var h=new PowerHistory();var t=DateTimeOffset.UtcNow;var s=DeviceState.Empty("A2687","dip-edge");s.Connected=true;double[] values=[8,.1,0,8];for(int i=0;i<values.Length;i++){s.Updated=t.AddSeconds(i);s.Ports[0].Power=values[i];h.Record(s,t.AddSeconds(i));}s.Updated=t.AddMilliseconds(300999);s.Ports[0].Power=8;h.Record(s,s.Updated);var points=h.Read(s,s.Updated);Eq(points[0].PlotVisible![0],true);Eq(points[0].PlotValues![0],.1);});
   Test("Confirmed loads backfill actual near-zero handshake readings on both models",()=>{ChartSample[] raw=[new(0,[8]),new(1000,[.1]),new(2000,[0]),new(3000,[7])];foreach(var model in new[]{"A2687","A2345"}){var f=CurveSignalFilter.Apply(model,raw);Eq(f.All(p=>p.PlotVisible![0]),true);Eq(f[1].PlotValues![0],.1);Eq(f[2].PlotValues![0],0.0);var g=PowerCurve.Geometry(f.Select(p=>(X:(double)p.At,Watts:p.PlotValues![0],Accepted:p.PlotVisible![0])),10,true);Eq(g.Figures.Count,1);Eq(g.Figures[0].Segments.Count,3);}});
@@ -36,11 +50,11 @@ public static class SelfTests {
   Test("All device actions respect independent permission switches and connectivity",()=>{string[] ports=["port","timer","schedule"],experimental=["setting","custom","clockSchedule","theme","cloudList","cloudChange","upload"];foreach(var action in ports){Throws(()=>DevicePermissions.Check(action,true,false,true));DevicePermissions.Check(action,true,true,false);Throws(()=>DevicePermissions.Check(action,false,true,true));}foreach(var action in experimental){Throws(()=>DevicePermissions.Check(action,true,true,false));DevicePermissions.Check(action,true,false,true);Throws(()=>DevicePermissions.Check(action,false,true,true));}DevicePermissions.Check("prefs",false,false,false);});
   Test("Zero current power retains nonzero history through the exact five-minute boundary",()=>{var h=new PowerHistory();var now=DateTimeOffset.UtcNow;var s=DeviceState.Empty("A2687","zero-transition");s.Connected=true;s.Updated=now;s.Ports[0].Power=8;h.Record(s);s.Updated=now.AddMilliseconds(1);s.Ports[0].Power=0;h.Record(s);Eq(h.Read(s).Length,2);Eq(h.Read(s,now.AddMinutes(5))[0].Values[0],8.0);Eq(h.Read(s,now.AddMinutes(5).AddMilliseconds(1)).Length,0);});
   Test("An all-zero or idle 0.2W five-minute window allocates no chart history",()=>{var h=new PowerHistory();var s=DeviceState.Empty("A2345","idle");s.Connected=true;s.Updated=DateTimeOffset.UtcNow;s.Ports[0].Power=.2;h.Record(s);Eq(h.Read(s).Length,0);s.Updated=DateTimeOffset.UtcNow;s.Ports[0].Power=0;h.Record(s);Eq(h.Read(s).Length,0);});
-  Test("A2687 filter needs model evidence instead of a shared Anker service",()=>{Eq(A2687Model.Advertisement("Anker Prime 26K",[[9,255]]),false);Eq(A2687Model.Advertisement("",[[9,255]]),false);Eq(A2687Model.Advertisement("Anker A2687",[]),true);Eq(A2687Model.Advertisement("",[[0,0xb4,5,0]]),true);Eq(A2687Model.ChargerSerial("ASHE12345678"),true);Eq(A2687Model.ChargerSerial("ASHDK7U1F51501771"),true);Eq(A2687Model.ChargerSerial("AFYDTEST000000000"),false);});
+  Test("A2687 filter needs model evidence instead of a shared Anker service",()=>{Eq(A2687Model.Advertisement("Anker Prime 26K",[[9,255]]),false);Eq(A2687Model.Advertisement("",[[9,255]]),false);Eq(A2687Model.Advertisement("Anker A2687",[]),true);Eq(A2687Model.Advertisement("",[[0,0xb4,5,0]]),true);Eq(A2687Model.ChargerSerial("ASHE12345678"),true);Eq(A2687Model.ChargerSerial("ASHDTEST000000001"),true);Eq(A2687Model.ChargerSerial("AFYDTEST000000000"),false);});
   Test("Known power-bank addresses are blocked even when legacy records call them A2687",()=>{var d=new BleDiscovery();d.Known([new("1","A2687","Charging",null,"ASHE-ONE"),new("2","A2687","Charging",null,"AFYDTEST000000000")]);Eq(d.Observe(1,"Charging",-50,true,modelMatch:false),true);Eq(d.Observe(2,"A2687",-50,true,modelMatch:true),false);Eq(d.Observe(3,"Charging",-50,true,modelMatch:false),false);Eq(d.Current().Length,1);});
   Test("Native five-minute chart buffer records both devices without UI selection",()=>{var h=new PowerHistory();var now=DateTimeOffset.UtcNow;var a=DeviceState.Empty("A2687","one");a.Connected=true;a.Updated=now;a.Ports[0].Power=10;var b=DeviceState.Empty("A2345","two");b.Connected=true;b.Updated=now;b.Ports[1].Power=2;h.Record(a);h.Record(b);a.Ports[0].Power=12;a.Updated=now.AddMilliseconds(1);h.Record(a);h.Record(a);Eq(h.Read(a).Length,2);Eq(h.Read(b).Length,1);Eq(h.Read(a)[0].Values[0],10.0);Eq(h.Read(b)[0].Values[1],2.0);Eq(h.Read(a,now.AddMinutes(5).AddSeconds(1)).Length,0);});
   Test("Chart histories stay separate for two 160W units and exclude stale samples",()=>{var h=new PowerHistory();var a=DeviceState.Empty("A2687","a");a.Connected=true;a.Updated=DateTimeOffset.UtcNow;h.Record(a);var b=DeviceState.Empty("A2687","b");Eq(h.Read(b).Length,0);b.Connected=true;b.Updated=DateTimeOffset.UtcNow.AddSeconds(-20);h.Record(b);Eq(h.Read(b).Length,0);});
-  Test("A2687 base info provides verified serial and hardware MAC",()=>{var r=Wire.Parse(Convert.FromHexString("00a10103a2084368617267696e67a30876302e302e352e30a411415348444b375531463531353031373731a5117ce9138146025531463531353031373731"));var id=DeviceRegistry.Identity(r);Eq(id.Serial,"ASHDK7U1F51501771");Eq(id.Mac,"7C:E9:13:81:46:02");});
+  Test("A2687 base info provides verified serial and hardware MAC",()=>{var r=Wire.Parse(Convert.FromHexString("00a10103a2084368617267696e67a30876302e302e352e30a4114153484454455354303030303030303031a5110200000000015531463531353031373731"));var id=DeviceRegistry.Identity(r);Eq(id.Serial,"ASHDTEST000000001");Eq(id.Mac,"02:00:00:00:00:01");});
   Test("Saved devices merge verified aliases and preserve custom names",()=>{var saved=new List<SavedDevice>{new("1","A2687","Charging","书桌","SERIALONE"),new("2","A2687","Charging",null,"SERIALTWO")};var updated=DeviceRegistry.Remember(saved,new("3","A2687","Charging",null,"SERIALONE"));Eq(saved.Count,2);Eq(updated.Alias,"书桌");Eq(updated.Addresses!.Contains("1"),true);Eq(updated.Addresses.Contains("3"),true);Eq(saved.Any(d=>d.SerialNumber=="SERIALTWO"),true);});
   Test("Same-name devices are distinct and identical saved IDs are normalized",()=>{var saved=new List<SavedDevice>{new("1","A2687","Charging"),new("2","A2687","Charging"),new("1","A2687","Charging")};DeviceRegistry.Normalize(saved);Eq(saved.Count,2);});
   Test("BLE discovery ignores nonconnectable duplicate beacons and expires old results",()=>{var d=new BleDiscovery();var now=DateTimeOffset.UtcNow;d.Observe(1,"Anker Prime 160W",-50,true,clock:now);Eq(d.Observe(2,"Anker Prime 160W",-51,false,clock:now),false);Eq(d.Current(now).Length,1);d.Observe(1,"ASHDJW-ONE",-49,false,true,now);Eq(d.Current(now)[0].Name,"ASHDJW-ONE");Eq(d.Current(now.AddSeconds(16)).Length,0);});
@@ -60,6 +74,65 @@ public static class SelfTests {
   Test("A2345 captured telemetry 6 ports",()=>{var f=Wire.Decode(Convert.FromHexString(rt));var d=DeviceState.Empty("A2345");Eq(Telemetry.Apply(d,f.Command,Wire.CloudFields(f)),true);Eq(d.Ports.Count,6);Eq(d.Ports[0].Voltage,14.984);Eq(d.Ports[0].Current,1.632);Eq(d.Ports[0].Power,23.84);Eq(d.Ports[2].Power,0.1);});
   Test("A2345 nested MQTT envelope and ambiguity rejection",()=>{var b=Convert.FromHexString(rt);var json=JsonSerializer.SerializeToUtf8Bytes(new{payload=JsonSerializer.Serialize(new{data=Convert.ToBase64String(b)})});Eq(Convert.ToHexString(Wire.ExtractCloud(json)),Convert.ToHexString(b));var b2=Wire.Encode(0xa0b,[0,0xa1,1,0x34],15,1);Throws(()=>Wire.ExtractCloud(JsonSerializer.SerializeToUtf8Bytes(new{data=Convert.ToBase64String(b),payload=Convert.ToBase64String(b2)})));});
   Test("A2345 cloud command typed timestamp",()=>{var f=Wire.Decode(Wire.Cloud(0x207,[Wire.F(0xa2,0),Wire.F(0xa3,1)],DateTimeOffset.FromUnixTimeSeconds(0x12345678)));Eq(Convert.ToHexString(f.Payload),"A10122A2020100A3020101FE050378563412");});
+  Test("A2687 releases failed cached transport and retries once after target discovery",()=>{
+   var steps=new List<string>();
+   A2687Connection.Open(_=>throw new IOException("GATT unavailable"),
+    _=>{steps.Add("rediscover");return Task.CompletedTask;},
+    ()=>steps.Add("release"),e=>steps.Add(e.Message),CancellationToken.None).GetAwaiter().GetResult();
+   Eq(string.Join(",",steps),"release,GATT unavailable,rediscover");
+  });
+  Test("A2687 normal connection and cancellation do not trigger discovery",()=>{
+   int scans=0;Task Discover(CancellationToken ct){scans++;return Task.CompletedTask;}
+   A2687Connection.Open(_=>Task.CompletedTask,Discover,()=>{},_=>{},CancellationToken.None).GetAwaiter().GetResult();
+   using var cancelled=new CancellationTokenSource();cancelled.Cancel();
+   Throws(()=>A2687Connection.Open(ct=>Task.FromCanceled(ct),Discover,()=>{},_=>{},cancelled.Token).GetAwaiter().GetResult());
+   Eq(scans,0);
+  });
+  Test("Resume recovery excludes Wi-Fi and leaves healthy Bluetooth links intact",()=>{
+   var r=new SessionRecovery();r.Capture(new[]{new SavedDevice("a","A2687","160"),new SavedDevice("b","A2345","250"),new SavedDevice("c","AD1204U","Ultra")});
+   int touched=0;r.Resume(_=>true,(d,ct)=>{touched++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.CompletedTask).GetAwaiter().GetResult();Eq(touched,0);
+   r.Capture(new[]{new SavedDevice("b","A2345","250")});r.Resume(_=>false,(d,ct)=>{touched++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.CompletedTask).GetAwaiter().GetResult();Eq(touched,0);
+  });
+  Test("Resume retries each captured Bluetooth model independently and stops at three",()=>{
+   var r=new SessionRecovery();r.Capture(new[]{new SavedDevice("a","A2687","160"),new SavedDevice("c","AD1204U","Ultra")});
+   int ble=0,cuk=0;r.Resume(_=>false,(d,ct)=>{if(d.Model=="A2687"){ble++;throw new IOException("radio warming");}cuk++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.CompletedTask).GetAwaiter().GetResult();Eq(ble,3);Eq(cuk,1);
+  });
+  Test("Manual stop cancels resume recovery and consumes pending targets",()=>{
+   var r=new SessionRecovery();r.Capture(new[]{new SavedDevice("a","A2687","160")});int count=0;
+   var task=r.Resume(_=>false,(d,ct)=>{count++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.Delay(Timeout.Infinite,ct));
+   r.Stop().GetAwaiter().GetResult();task.GetAwaiter().GetResult();
+   r.Resume(_=>false,(d,ct)=>{count++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.CompletedTask).GetAwaiter().GetResult();Eq(count,0);
+  });
+  Test("A second sleep during recovery preserves the next resume targets",()=>{
+   var r=new SessionRecovery();var saved=new SavedDevice("a","A2687","160");r.Capture(new[]{saved});
+   var first=r.Resume(_=>false,(d,ct)=>Task.CompletedTask,_=>{},(_,ct)=>Task.Delay(Timeout.Infinite,ct));
+   r.Capture(new[]{saved});int attempts=0;
+   r.Resume(_=>false,(d,ct)=>{attempts++;return Task.CompletedTask;},_=>{},(_,ct)=>Task.CompletedTask).GetAwaiter().GetResult();
+   first.GetAwaiter().GetResult();Eq(attempts,1);
+  });
+  Test("Repeated unlock events share one recovery task",()=>{
+   var r=new SessionRecovery();r.Capture(new[]{new SavedDevice("a","A2687","160")});var ready=new TaskCompletionSource();
+   int count=0;Task Connect(SavedDevice d,CancellationToken ct){count++;return Task.CompletedTask;}
+   var first=r.Resume(_=>false,Connect,_=>{},(_,ct)=>ready.Task.WaitAsync(ct));var second=r.Resume(_=>false,Connect,_=>{});Eq(ReferenceEquals(first,second),true);
+   ready.SetResult();first.GetAwaiter().GetResult();Eq(count,1);
+  });
+  Test("SCP uses measured V and A, including probe-only packets, idle and protocol changes",()=>{
+   var device=DeviceState.Empty("A2687");
+   byte[] sample=[1,0xe0,0x24,0xa8,0x0a,0xc8,0x19]; // 9.440 V, 2.728 A, reported 66 W
+   byte[] profile=[1,0,0,0,0,0,0,0,0,0,2,5];
+   void Feed(bool metadata)=>Telemetry.Apply(device,0x300,metadata
+    ?new Reply(null,[Wire.Block(0xa6,sample),Wire.Block(0xad,profile)])
+    :new Reply(null,[Wire.Block(0xa6,sample)]));
+   Feed(true);Eq(device.Ports[1].Power,9.44*2.728);Eq(device.Total.ToString("F1",System.Globalization.CultureInfo.InvariantCulture),"25.8");
+   sample[3]=0;sample[4]=0;Feed(false);Eq(device.Total,0d);
+   sample[0]=0;Feed(false);Eq(device.Ports[1].Protocol,null);
+   sample[0]=1;profile[11]=1;Feed(true);Eq(device.Total,66d);
+  });
+  Test("A2345 applies SCP power only to the matching output",()=>{
+   var device=DeviceState.Empty("A2345");
+   var fields=Enumerable.Range(0,6).Select(i=>Wire.Block((byte)(0xa2+i),[(byte)(i<2?1:0),0xe0,0x24,0xa8,0x0a,0xc8,0x19,0,(byte)(i==0?1:2)])).ToList();
+   Telemetry.Apply(device,0x303,new Reply(null,fields));Eq(device.Ports[0].Power,9.44*2.728);Eq(device.Ports[1].Power,66d);Eq(device.Total,66d+9.44*2.728);
+  });
   Test("A2687 live struct and countdown",()=>{var s=DeviceState.Empty("A2687");var r=new Reply(null,[Wire.Block(0xa5,[1,0x20,0x4e,0xe8,3,0x10,0x27]),Wire.Block(0xac,[1,1,60,0,0,0,30,0,0,0,2,1])]);Telemetry.Apply(s,0x300,r);Eq(s.Ports[0].Voltage,20.0);Eq(s.Ports[0].Power,100.0);Eq(s.Ports[0].Countdown,(uint?)30);});
   Test("Energy trapezoid integration / stale gaps / device separation",()=>{var t=DateTimeOffset.UtcNow;var p=new[]{new EnergyPoint(t,"a","A2687",[100]),new EnergyPoint(t.AddSeconds(10),"a","A2687",[100]),new EnergyPoint(t.AddSeconds(100),"a","A2687",[100])};Eq(Math.Round(EnergyHistory.Kwh(p),10),Math.Round(100*10/3600.0/1000,10));Eq(EnergyHistory.Kwh([p[0],p[1] with{Device="b"}]),0.0);});
   Test("CRC32 standard vector",()=>Eq(Wire.Crc32(Encoding.ASCII.GetBytes("123456789")),0xcbf43926u));

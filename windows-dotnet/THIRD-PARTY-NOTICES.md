@@ -180,3 +180,7 @@ specific language governing permissions and limitations under the License.
 各 MIT / BSD-3-Clause crate 自带的许可与版权声明，保存在
 `Resources/Licenses/charker-matter-LICENSES.txt`，并随 App 一同分发。该文件由
 `mise run matter-licenses` 从 `Matter/Cargo.lock` 生成。
+
+## CUKTECH AD1204U — Apache-2.0 adaptation
+
+The Windows additions CuktechProtocol.cs, MiBleSession.cs and XiaomiCloud.cs adapt protocol and cloud-import work from zuyan9/ha-cuk-ble. Full attribution, inspected revision and license are in licenses/cuktech-NOTICE.txt and licenses/cuktech-Apache-2.0.txt. The two user-provided cuktech-ble-server projects were cross-checked; no unlicensed code was copied.

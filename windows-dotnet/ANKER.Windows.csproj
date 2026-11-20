@@ -3,7 +3,7 @@
     <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AssemblyName>ANKER</AssemblyName><Product>ANKER</Product><Title>ANKER</Title><Version>0.5.1.19</Version><ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>UI\assets\AppIcon.ico</ApplicationIcon>
+    <AssemblyName>ANKER</AssemblyName><Product>ANKER</Product><Title>ANKER</Title><Version>0.5.1.31</Version><ApplicationManifest>app.manifest</ApplicationManifest><ApplicationIcon>UI\assets\AppIcon.ico</ApplicationIcon>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier><SelfContained>true</SelfContained><PublishSingleFile>false</PublishSingleFile>
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <DefaultItemExcludes>$(DefaultItemExcludes);Bridge\node_modules\**;publish\**;Tests\**</DefaultItemExcludes>

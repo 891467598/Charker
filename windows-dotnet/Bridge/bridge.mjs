@@ -11,7 +11,7 @@ const QRCode=(await import('qrcode')).default;
 Logger.level='error';
 const send=v=>process.stdout.write(JSON.stringify(v)+'\n');
 let latest=null,allow=false,requestId=0,processing=Promise.resolve(),last=Date.now(),closing=false;const waiters=new Map(),nodes=[],endpoints=[],energies=[];
-const model=process.argv[3]==='A2345'?'A2345':'A2687',count=model==='A2345'?6:3;
+const model=['A2345','AD1204U'].includes(process.argv[3])?process.argv[3]:'A2687',count=model==='A2345'?6:model==='AD1204U'?4:3;
 const acc=(measurementType,max)=>({measurementType,measured:false,minMeasuredValue:0,maxMeasuredValue:max,accuracyRanges:[{rangeMin:0,rangeMax:max,percentMax:500}]});
 const energyFile=path.join(config.defaultStoragePath,'energy-'+model+'.json');let saved={};try{saved=JSON.parse(fs.readFileSync(energyFile,'utf8'));}catch{}
 function control(port,on){if(!allow||!latest?.connected||latest?.stale||latest.model!==model)throw Error('Device control unavailable');if(port<0)throw Error('Total endpoint is read only');let id=String(++requestId);send({type:'control',id,port,on});return new Promise((resolve,reject)=>{let timer=setTimeout(()=>{waiters.delete(id);reject(Error('Charger did not confirm'));},15000);waiters.set(id,{resolve,reject,timer});});}
@@ -27,8 +27,8 @@ try{
    async off(){await control(index,false);this.state.onOff=false;}
    async toggle(){await control(index,!this.state.onOff);this.state.onOff=!this.state.onOff;}
   }
-  let name='ANKER '+model+' '+(i<0?'Total':i<4?'C'+(i+1):'A'+(i-3));
-  const node=await ServerNode.create({id:'charker-'+model+'-'+(i+1),network:{port:5540+i+1},productDescription:{name},basicInformation:{vendorName:'ANKER',productName:name,nodeLabel:name,serialNumber:'ANKERWin-'+model+'-'+(i+1),softwareVersion:50119,softwareVersionString:'0.5.1-win.19'}});nodes.push(node);
+  let name=(model==='AD1204U'?'CUKTECH ':'ANKER ')+model+' '+(i<0?'Total':model==='AD1204U'&&i===3?'A':i<4?'C'+(i+1):'A'+(i-3));
+  const node=await ServerNode.create({id:'charker-'+model+'-'+(i+1),network:{port:5540+i+1},productDescription:{name},basicInformation:{vendorName:'ANKER',productName:name,nodeLabel:name,serialNumber:'ANKERWin-'+model+'-'+(i+1),softwareVersion:50131,softwareVersionString:'0.5.1-win.31'}});nodes.push(node);
   const endpoint=await node.add(OnOffPlugInUnitDevice.with(ChargerOnOff,power,energy,topology),{id:'meter',descriptor:{deviceTypeList:[{deviceType:0x10a,revision:3},{deviceType:0x510,revision:1}]},onOff:{onOff:true},electricalPowerMeasurement:{powerMode:2,numberOfMeasurementTypes:3,accuracy:[acc(1,60000),acc(2,10000),acc(5,300000)],voltage:0,activeCurrent:0,activePower:0},electricalEnergyMeasurement:{accuracy:acc(14,1e15),cumulativeEnergyImported:{energy:0}}});endpoints.push(endpoint);energies.push(saved[i+1]||0);
   await node.start();const codes=node.state.commissioning.pairingCodes;pairings.push({name,code:codes.manualPairingCode,qrImage:await QRCode.toDataURL(codes.qrPairingCode,{width:220,margin:2})});
  }

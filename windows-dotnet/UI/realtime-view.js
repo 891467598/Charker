@@ -16,7 +16,7 @@ class PowerRefreshGate {
 }
 function portVisualState(device,port){
  if(!device.connected||device.stale)return {attached:false,charging:false,known:false};
- if(device.model==='A2687'&&!(port.on!==false&&port.power>.2&&(port.power>=.7||device.confirmedPorts?.[port.index]===true)))return {attached:false,charging:false,known:true};
+ if(['A2687','AD1204U'].includes(device.model)&&!(port.on!==false&&port.power>.2&&(port.power>=.7||device.confirmedPorts?.[port.index]===true)))return {attached:false,charging:false,known:true};
  if(port.power>0&&port.power<=.2)return {attached:false,charging:false,known:true};
  const drawing=port.on!==false&&port.power>0.1;
  // A2687 cable capability can identify an idle cable; USB identity alone cannot.

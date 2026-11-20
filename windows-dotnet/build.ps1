@@ -13,7 +13,7 @@ if(!$SkipRestore){
  & $Dotnet restore $project --locked-mode --runtime win-x64 --configfile (Join-Path $PSScriptRoot 'NuGet.Config')
  if($LASTEXITCODE -ne 0){throw '.NET dependency restore failed'}
 }
-& $Dotnet publish $project -c Release -r win-x64 --self-contained true --no-restore -o $target ('-p:PathMap='+$PSScriptRoot+'=/_/src/windows-dotnet')
+& $Dotnet publish $project -c Release -r win-x64 --self-contained true --no-restore -o $target -p:DebugType=None -p:DebugSymbols=false ('-p:PathMap='+$PSScriptRoot+'=/_/src/windows-dotnet')
 if($LASTEXITCODE -ne 0){throw '.NET publish failed'}
 New-Item -ItemType Directory -Force (Join-Path $target 'Bridge') | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Bridge/node_modules') -Destination (Join-Path $target 'Bridge') -Recurse -Force

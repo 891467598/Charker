@@ -11,10 +11,10 @@
 [Setup]
 AppId={{96F34F43-297D-4948-B2C2-AAD889371017}
 AppName=ANKER
-AppVersion=0.5.1-win.19
-AppVerName=ANKER 0.5.1-win.19
+AppVersion=0.5.1-win.31
+AppVerName=ANKER 0.5.1-win.31
 AppPublisher=ANKER Windows community port
-VersionInfoVersion=0.5.1.19
+VersionInfoVersion=0.5.1.31
 DefaultDirName={localappdata}\Programs\ANKER
 DefaultGroupName=ANKER
 DisableProgramGroupPage=yes
@@ -28,7 +28,7 @@ RestartApplications=no
 SetupIconFile=..\UI\assets\AppIcon.ico
 UninstallDisplayIcon={app}\ANKER.exe
 OutputDir={#OutputDir}
-OutputBaseFilename=ANKER-0.5.1-win.19-Setup-x64
+OutputBaseFilename=ANKER-0.5.1-win.31-Setup-x64
 Compression=lzma2/normal
 SolidCompression=yes
 DiskSpanning=no

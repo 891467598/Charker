@@ -1,0 +1,14 @@
+# Windows LE发现缓存恢复
+
+实机旧版在“打开Windows蓝牙设备”阶段约0.18秒返回空对象，尚未进入Token验证。新版随后在系统缓存同样未命中时启动定向发现，约1秒收到目标的Public地址广播，再创建对象、发现FE95服务并完成认证。Windows并未持久配对该设备，米家Token绑定与Windows发现缓存是不同机制。
+
+微软原始文档明确说明：未配对且不在系统缓存中的BLE设备，FromBluetoothAddressAsync会返回null；应先用LE广播Watcher或设备枚举填充缓存。
+https://learn.microsoft.com/en-us/uwp/api/windows.devices.bluetooth.bluetoothledevice.frombluetoothaddressasync
+
+实现先保留缓存命中的快速路径；只在返回null时，使用最长12秒的局部Watcher，匹配保存的完整地址和可连接广播。不会按名称连接其他充电器，也不会切换保存的身份。使用广播实际BluetoothAddressType重新打开，最多三次，间隔250/500ms；外层90秒与取消机制保留。无目标时停止扫描并提示检查通电/距离/占用，不会无限重试。所有退出路径解绑局部Watcher事件。
+
+只有State.Connected已经为true时，Windows Disconnected回调才作为连接丢失；建立过程中由GATT操作和既有超时判断失败。Disconnect将本程序GattSession.MaintainConnection设为false后释放对象。Token存储、认证、加密、接收去重窗口、轮询及其他型号连接未改。
+
+CuktechDeviceOpening包含注入式的缓存/发现/打开委托，九项回归覆盖缓存命中、未命中及地址类型、有界等待与三次上限、发现错误、连接中取消、预先取消。实机诊断日志仅记录阶段、消息长度、计数与结果，不包含设备地址、凭据或原始报文。
+
+快速重连补充：若缓存对象仍报告Connected，先释放本进程对象并等待目标新的可连接广播（最长20秒），不在上一个物理连接内直接重新认证。退出时先在2秒总时限内注销本进程CCCD，再释放MaintainConnection和本机对象；下次连接等待这一清理完成。新认证前复位控制通知，并按原顺序在问候后订阅控制通道。认证算法与Token校验不变。

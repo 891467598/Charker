@@ -13,3 +13,5 @@ Additional dependencies:
 - qrcode 1.5.4, MIT, and transitive npm dependencies; licenses in Bridge/node_modules.
 
 The Windows code is supplied for personal use and testing under the same MIT license as the original project. No signing certificate or Anker/Apple certification is asserted. The generated test fixtures originate in the supplied source; original provenance is documented in the upstream notices.
+
+CUKTECH AD1204U additions adapt Apache-2.0 portions from zuyan9/ha-cuk-ble. See licenses/cuktech-NOTICE.txt and licenses/cuktech-Apache-2.0.txt for attribution and terms. These portions are excepted from the general MIT statement above. Official CUKTECH reference photos are not distributed; the new model and SVG are original illustrations.

@@ -1,0 +1,30 @@
+CUKTECH AD1204U support — third-party attribution
+
+Protocol/authentication/property parsing and Xiaomi QR cloud import were
+adapted and independently rewritten in C# from:
+  zuyan9/ha-cuk-ble — https://github.com/zuyan9/ha-cuk-ble
+  inspected revision: 64903f148c483e83803aa02c560048c2e7fd1d06
+  Apache License, Version 2.0 (included as cuktech-Apache-2.0.txt).
+
+The upstream authors and contributors retain their rights. The upstream
+project contains a LICENSE file and no separate NOTICE file. The adaptation
+changes the runtime from Python/HA/bleak to Windows .NET/WinRT, adds the
+existing application's UI, DPAPI token storage, history and widget integration.
+CuktechProtocol.cs, MiBleSession.cs and XiaomiCloud.cs are distributed under
+Apache-2.0 for these adapted portions. The remainder retains its own license.
+
+Cross-check references (not bundled or executed):
+  https://github.com/Dream-Architect1026/cuktech-ble-server (MIT)
+  https://github.com/kairui1108/cuktech-ble-server (protocol comparison only;
+  no LICENSE file found in the inspected checkout; no code copied from it).
+
+ha-cuk-ble documents its standard-auth reference as dnandha/miauth and its
+QR/device-list reference as PiotrMachowski/Xiaomi-cloud-tokens-extractor.
+No registration/binding implementation was copied; this app logs in to an
+already bound device using its owner-supplied/imported BLE token.
+
+The new CUKTECH 3D illustration and SVG fallback are original parametric
+assets. Product photos from cuktech.com were used only to inspect shape and
+port types, and are not included in the distributed application.
+CUKTECH and Xiaomi marks belong to their respective owners. No affiliation
+or endorsement is asserted.
